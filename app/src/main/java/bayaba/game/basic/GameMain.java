@@ -11,6 +11,7 @@ import bayaba.engine.lib.ButtonObject;
 import bayaba.engine.lib.ButtonType;
 import bayaba.engine.lib.Font;
 import bayaba.engine.lib.GameInfo;
+import bayaba.engine.lib.GameObject;
 import bayaba.engine.lib.Sprite;
 
 public class GameMain
@@ -22,15 +23,17 @@ public class GameMain
 	public float TouchX, TouchY;
 	public char viewmode = 'M';
 
-
 	Font font = new Font();
 
 	Sprite MainbgSpr = new Sprite();
 	Sprite MainbuttonSpr = new Sprite();
 
+	Sprite knight = new Sprite();
+
+	GameObject User = new GameObject();
+	GameObject Partner = new GameObject();
+
 	ArrayList<ButtonObject> MainButton = new ArrayList<ButtonObject>();
-
-
 	ArrayList<Sprite> StagebgSpr = new ArrayList<Sprite>();
 
 
@@ -66,6 +69,7 @@ public class GameMain
 			}
 
 			// Button Draw
+			MainButton.get(i).trans = 0.75f;
 			MainButton.get(i).DrawSprite(mGL, 0, gInfo, font);
 		}
 
@@ -88,13 +92,18 @@ public class GameMain
 	public void Stageinit(){
 		if(viewmode == 'S') viewtimer ++;
 
-		if(viewtimer == 120){
+		if(viewtimer == 3600){
 			viewtimer = 0;
 			seq = (int)(Math.round(Math.random() * 15));
 		}
 
 		StagebgSpr.get(seq).PutAni(gInfo, 240, 400, 0, 0);
 		Log.d("viewtimer", String.valueOf(viewtimer));
+
+		User.DrawSprite(gInfo);
+		User.AddFrameLoop(0.1f);
+		Partner.DrawSprite(gInfo);
+		Partner.AddFrameLoop(0.1f);
 
 
 	}
@@ -163,6 +172,11 @@ public class GameMain
 		Spritetemp.LoadSprite(mGL, MainContext, "battlebg/CmBkCF.spr");
 		StagebgSpr.add(Spritetemp);
 
+		knight.LoadSprite(mGL, MainContext, "hero/knight.spr");
+
+		User.SetObject(knight, 0, 0, 100, 500, 0, 0);
+		Partner.SetObject(knight, 0, 0, 400, 500, 1, 0);
+		Partner.flip = true;
 
 		ButtonObject Buttontemp;
 
