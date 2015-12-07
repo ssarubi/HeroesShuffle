@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -18,7 +19,7 @@ public class GameMain
 {
 	public GL10 mGL = null; // OpenGL 객체
 	public Context MainContext;
-//	public Random MyRand = new Random(); // 랜덤 발생기
+	public Random MyRand = new Random(); // 랜덤 발생기
 	public GameInfo gInfo; // 게임 환경 설정용 클래스 : MainActivity에 선언된 것을 전달 받는다.
 	public float TouchX, TouchY;
 	public char viewmode = 'M';
@@ -29,6 +30,7 @@ public class GameMain
 	Sprite MainbuttonSpr = new Sprite();
 
 	Sprite LifeSpr = new Sprite();
+	Sprite UnitButton = new Sprite();
 
 	Sprite knight = new Sprite();
 
@@ -36,6 +38,9 @@ public class GameMain
 	ArrayList<GameObject> Partner = new ArrayList<GameObject>();
 
 	ArrayList<ButtonObject>Lifebar = new ArrayList<ButtonObject>();
+
+	ArrayList<ButtonObject> UserDeck = new ArrayList<ButtonObject>();
+	ArrayList<ButtonObject> PartnerDeck = new ArrayList<ButtonObject>();
 
 	ArrayList<ButtonObject> MainButton = new ArrayList<ButtonObject>();
 	ArrayList<ButtonObject> StageButton = new ArrayList<ButtonObject>();
@@ -46,7 +51,6 @@ public class GameMain
 	ArrayList<Sprite> Castle = new ArrayList<Sprite>();
 
 	ArrayList<GameObject> Spells = new ArrayList<GameObject>();
-
 
 
 
@@ -101,13 +105,16 @@ public class GameMain
 	public void Stageinit(){
 		if(viewmode == 'S') viewtimer ++;
 
-		if(viewtimer == 3600){
+		if(viewtimer == 100){
 			viewtimer = 0;
-			seq = (int)(Math.round(Math.random() * 15));
+			seq = (int)(Math.round(Math.random() * (StagebgSpr.size() - 1)));
 		}
 
 		StagebgSpr.get(seq).PutAni(gInfo, 240, 400, 0, 0);
 
+		for(int i = 0; i < UserDeck.size(); i++){
+			UnitButton.PutAni(gInfo, 30 + (i * 30), 450, 0, 0);
+		}
 
 		// Button Check Event
 		for(int i = 0; i < StageButton.size(); i++){
@@ -120,26 +127,49 @@ public class GameMain
 
 					switch (i) {
 						case 0:
-							HeroAction('L', "User");
-							User.get(0).state = 1;
-
-							GameObject pikeman = new GameObject();
-							pikeman.SetObject(Castle.get(0), 0, 0, User.get(0).x, User.get(0).y, 0, 0);
-							pikeman.speed = 1;
-							pikeman.energy = 3;
-							User.add(pikeman);
-
+							HeroAction('L', User.get(0));
 							break;
+						case 1:
+							Shuffle(User.get(0));
 						default:
 							break;
 					}
 				}
 			}
-
-			// Button Draw
 			StageButton.get(i).trans = 0.75f;
 			StageButton.get(i).DrawSprite(mGL, 0, gInfo, font);
 		}
+
+		// UserDeck
+		for(int i = 0; i < UserDeck.size(); i++){
+
+			if ( UserDeck.get(i).type == ButtonType.TYPE_ONE_CLICK ) // 버튼 타입인지 체크한다.
+			{
+				if ( UserDeck.get(i).click == ButtonType.STATE_CLK_BUTTON ) // 버튼이 1회 눌렸는지 체크한다. 눌렀다가 떼졌을때 STATE_CLK_BUTTON이 된다.
+				{
+					UserDeck.get(i).ResetButton(); // 버튼 상태를 리셋해서 STATE_CLK_NORMAL로 변경한다. 다시 버튼을 누를 수 있는 상태가 된다.
+
+					if(UserDeck.get(i).pattern == Castle.get(0)){
+						MakeObject("pikeman", User.get(0));
+					}
+
+					if(UserDeck.get(i).pattern == Castle.get(1)){
+						MakeObject("halberdier", User.get(0));
+					}
+
+					if(UserDeck.get(i).pattern == Castle.get(2)){
+						MakeObject("archer", User.get(0));
+					}
+
+					UserDeck.get(i).dead = true;
+				}
+			}
+			UserDeck.get(i).x = 30 + (i * 30);
+			UserDeck.get(i).DrawSprite(mGL, 0, gInfo, font);
+		}
+
+
+
 
 		for(int i = 0; i < User.size(); i++){
 			User.get(i).DrawSprite(gInfo);
@@ -155,32 +185,37 @@ public class GameMain
 			Spells.get(i).DrawSprite(gInfo);
 		}
 
+
+		PartnerAction();
+
 		MotionChange();
 		MoveObject();
 		CrashCheck();
 		DeleteObject();
 	}
 
-	public void HeroAction(char Magic, String target){
+	public void HeroAction(char Magic, GameObject Requester){
 
 		switch (Magic){
 			case 'L':
 
-				if(target == "User"){
+				if(Requester == User.get(0)){
 					GameObject Lightning = new GameObject();
 					Lightning.SetObject(SpellsSpr.get(0), 0, 0, User.get(0).x, User.get(0).y, 0, 0);
 					Lightning.damage = 5;
 					Lightning.speed = 5;
 					Lightning.type = 1;
+					User.get(0).state = 1;
 					Spells.add(Lightning);
 					Log.d("라이트닝 담기 성공", String.valueOf(Spells.size()));
 					break;
-				}else if(target == "Partner"){
+				}else if(Requester == Partner.get(0)){
 					GameObject Lightning = new GameObject();
 					Lightning.SetObject(SpellsSpr.get(0), 0, 0, Partner.get(0).x, Partner.get(0).y, 0, 0);
 					Lightning.damage = 5;
 					Lightning.speed = -5;
 					Lightning.type = 2;
+					Partner.get(0).state = 1;
 					Spells.add(Lightning);
 					Log.d("라이트닝 담기 성공", String.valueOf(Spells.size()));
 					break;
@@ -190,6 +225,50 @@ public class GameMain
 				break;
 		}
 
+	}
+
+	public void UnitAction(char Action, GameObject Requester){
+
+		switch (Action){
+			case 'A':
+				GameObject Arrow = new GameObject();
+				if(Requester.type == 1){
+					Arrow.SetObject(Castle.get(2), 0, 0, Requester.x, Requester.y, 2, 0);
+					Arrow.speed = 3;
+					Arrow.type = 1;
+					Arrow.damage = Requester.damage;
+					Spells.add(Arrow);
+				}else if(Requester.type == 2){
+					Arrow.SetObject(Castle.get(2), 0, 0, Requester.x, Requester.y, 2, 0);
+					Arrow.speed = -3;
+					Arrow.type = 2;
+					Arrow.damage = Requester.damage;
+					Arrow.flip = true;
+					Spells.add(Arrow);
+				}
+				break;
+			default:
+				break;
+		}
+
+	}
+
+	public void PartnerAction(){
+		if(MyRand.nextInt(500) == 0){
+			HeroAction('L', Partner.get(0));
+		}
+
+		if(MyRand.nextInt(1000) == 0) {
+			MakeObject("pikeman", Partner.get(0));
+		}
+
+		if(MyRand.nextInt(1000) == 0) {
+			MakeObject("halberdier", Partner.get(0));
+		}
+
+		if(MyRand.nextInt(1000) == 0) {
+			MakeObject("archer", Partner.get(0));
+		}
 	}
 
 	public void MakeLifeBar(){
@@ -211,18 +290,51 @@ public class GameMain
 			User.get(0).frame = 0;
 		}
 
+		if(Partner.get(0).state == 1){
+			Partner.get(0).motion = 1;
+			Partner.get(0).frame = 0;
+			Partner.get(0).state = 0;
+		}
+
+		if(Partner.get(0).motion == 1 && Partner.get(0).frame > 8.9f){
+			Partner.get(0).motion = 0;
+			Partner.get(0).frame = 0;
+		}
+
 	}
 
 	public void MoveObject(){
 
 		for(int i = 0; i < User.size(); i++){
+
 			if(User.get(i).subfr > 0) User.get(i).subfr = User.get(i).subfr * 0.95f;
 			User.get(i).x += (User.get(i).speed - User.get(i).subfr);
+
+			if(User.get(i).jump == 'Y' && User.get(i).delay <= 0){
+				if(User.get(i).pattern == Castle.get(2)){
+					UnitAction('A', User.get(i));
+					User.get(i).delay = 300;
+				}
+			}
+
+			if(User.get(i).jump == 'Y') User.get(i).delay--;
+
 		}
 
 		for(int i = 0; i < Partner.size(); i++){
+
 			if(Partner.get(i).subfr > 0) Partner.get(i).subfr = Partner.get(i).subfr * 0.95f;
 			Partner.get(i).x += (Partner.get(i).speed + Partner.get(i).subfr);
+
+			if(Partner.get(i).jump == 'Y' && Partner.get(i).delay <= 0){
+				if(Partner.get(i).pattern == Castle.get(2)){
+					UnitAction('A', Partner.get(i));
+					Partner.get(i).delay = 300;
+				}
+			}
+
+			if(Partner.get(i).jump == 'Y') Partner.get(i).delay--;
+
 		}
 
 		for(int i = 0; i < Spells.size(); i++){
@@ -262,8 +374,8 @@ public class GameMain
 					User.get(i).energy -= Partner.get(j).damage;
 					Partner.get(j).energy -= User.get(i).damage;
 
-					if(i != 0) User.get(i).subfr = 5;
-					if(j != 0) Partner.get(j).subfr = 5;
+					if(i != 0 && User.get(i).jump != 'Y') User.get(i).subfr = 3;
+					if(j != 0 && Partner.get(j).jump != 'Y') Partner.get(j).subfr = 3;
 
 					if(User.get(i).energy <= 0) User.get(i).dead = true;
 					if(Partner.get(j).energy <= 0) Partner.get(j).dead = true;
@@ -272,13 +384,102 @@ public class GameMain
 		}
 	}
 
+	public void Shuffle(GameObject Object){
+		ButtonObject Buttontemp = new ButtonObject();
+
+		if(Object == User.get(0)){
+			Buttontemp.SetButton(Castle.get((int) (Math.round(Math.random() * (Castle.size() - 1)))), ButtonType.TYPE_ONE_CLICK, 0, 30 + (UserDeck.size() * 30), 450, 0);
+			if(Buttontemp.pattern == Castle.get(0)) Buttontemp.motion = 2;
+			if(Buttontemp.pattern == Castle.get(1)) Buttontemp.motion = 2;
+			if(Buttontemp.pattern == Castle.get(2)) Buttontemp.motion = 3;
+			UserDeck.add(Buttontemp);
+		}
+
+	}
+
+	public void MakeObject(String ObjectName, GameObject Requester){
+
+		if(ObjectName == "pikeman"){
+			GameObject pikeman = new GameObject();
+			pikeman.SetObject(Castle.get(0), 0, 0, Requester.x, Requester.y, 0, 0);
+
+			pikeman.damage = 1;
+			pikeman.energy = 3;
+
+			if(Requester == User.get(0)){
+				pikeman.speed = 0.5f;
+				pikeman.type = 1;
+				User.add(pikeman);
+			}
+			else{
+				pikeman.speed = -0.5f;
+				pikeman.flip = true;
+				pikeman.type = 2;
+				Partner.add(pikeman);
+			}
+		}
+
+		if(ObjectName == "halberdier"){
+			GameObject halberdier = new GameObject();
+			halberdier.SetObject(Castle.get(1), 0, 0, Requester.x, Requester.y, 0, 0);
+
+			halberdier.damage = 1;
+			halberdier.energy = 5;
+
+			if(Requester == User.get(0)){
+				halberdier.speed = 0.5f;
+				halberdier.type = 1;
+				User.add(halberdier);
+			}
+			else{
+				halberdier.speed = -0.5f;
+				halberdier.type = 2;
+				halberdier.flip = true;
+				Partner.add(halberdier);
+			}
+		}
+
+		if(ObjectName == "archer"){
+			GameObject archer = new GameObject();
+			archer.SetObject(Castle.get(2), 0, 0, Requester.x, Requester.y, 1, 0);
+
+			archer.damage = 1;
+			archer.energy = 3;
+			archer.jump = 'Y';
+			int addx = 0;
+
+			if(Requester == User.get(0)){
+				for(int i = 0; i < User.size(); i ++) if(User.get(i).pattern == Castle.get(2)) addx += 30;
+				archer.x = (User.get(0).x + 30 + addx);
+				archer.type = 1;
+				User.add(archer);
+			}
+			else{
+				for(int i = 0; i < Partner.size(); i ++) if(Partner.get(i).pattern == Castle.get(2)) addx -= 30;
+				archer.x = (Partner.get(0).x - 30 - addx);
+				archer.flip = true;
+				archer.type = 2;
+				Partner.add(archer);
+			}
+		}
+
+	}
+
 	public void DeleteObject(){
 		for(int i = 1; i < User.size(); i++){
 			if(User.get(i).dead == true) User.remove(i);
 		}
 
+		for(int i = 0; i < UserDeck.size(); i++){
+			if(UserDeck.get(i).dead == true) UserDeck.remove(i);
+		}
+
 		for(int i = 1; i < Partner.size(); i++){
 			if(Partner.get(i).dead == true) Partner.remove(i);
+		}
+
+		for(int i = 0; i < PartnerDeck.size(); i++){
+			if(PartnerDeck.get(i).dead == true) PartnerDeck.remove(i);
 		}
 
 		for(int i = 0; i < Spells.size(); i++){
@@ -370,9 +571,17 @@ public class GameMain
 		Spritetemp = new Sprite();
 		Spritetemp.LoadSprite(mGL, MainContext, "castle/pikeman.spr");
 		Castle.add(Spritetemp);
+		Spritetemp = new Sprite();
+		Spritetemp.LoadSprite(mGL, MainContext, "castle/halberdier.spr");
+		Castle.add(Spritetemp);
+		Spritetemp = new Sprite();
+		Spritetemp.LoadSprite(mGL, MainContext, "castle/archer.spr");
+		Castle.add(Spritetemp);
 
 
 		knight.LoadSprite(mGL, MainContext, "hero/knight.spr");
+
+		UnitButton.LoadSprite(mGL, MainContext, "button/Unitbutton.spr");
 
 		GameObjecttemp = new GameObject();
 		GameObjecttemp.SetObject(knight, 0, 0, 20, 300, 0, 0);
@@ -404,6 +613,11 @@ public class GameMain
 		Buttontemp = new ButtonObject();
 		Buttontemp.SetButton(SpellsSpr.get(0), ButtonType.TYPE_ONE_CLICK, 0, 30, 30, 0);
 		StageButton.add(Buttontemp);
+
+		Buttontemp = new ButtonObject();
+		Buttontemp.SetButton(SpellsSpr.get(0), ButtonType.TYPE_ONE_CLICK, 0, 150, 30, 0);
+		StageButton.add(Buttontemp);
+
 	}
 	
 	public void PushButton( boolean push ) // OpenGL 화면에 터치가 발생하면 GLView에서 호출된다.
@@ -411,6 +625,7 @@ public class GameMain
 		// 터치를 처리합니다.
 		for ( int i = 0; i < MainButton.size(); i++ ) MainButton.get(i).CheckButton( gInfo, push, TouchX, TouchY );
 		for ( int i = 0; i < StageButton.size(); i++ ) StageButton.get(i).CheckButton( gInfo, push, TouchX, TouchY );
+		for ( int i = 0; i < UserDeck.size(); i++ ) UserDeck.get(i).CheckButton( gInfo, push, TouchX, TouchY );
 	}
 
 
