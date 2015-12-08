@@ -168,9 +168,6 @@ public class GameMain
 			UserDeck.get(i).DrawSprite(mGL, 0, gInfo, font);
 		}
 
-
-
-
 		for(int i = 0; i < User.size(); i++){
 			User.get(i).DrawSprite(gInfo);
 			User.get(i).AddFrameLoop(0.2f);
@@ -238,6 +235,7 @@ public class GameMain
 					Arrow.type = 1;
 					Arrow.damage = Requester.damage;
 					Spells.add(Arrow);
+					Requester.state = 1;
 				}else if(Requester.type == 2){
 					Arrow.SetObject(Castle.get(2), 0, 0, Requester.x, Requester.y, 2, 0);
 					Arrow.speed = -3;
@@ -245,6 +243,7 @@ public class GameMain
 					Arrow.damage = Requester.damage;
 					Arrow.flip = true;
 					Spells.add(Arrow);
+					Requester.state = 1;
 				}
 				break;
 			default:
@@ -278,6 +277,37 @@ public class GameMain
 	}
 
 	public void MotionChange(){
+		if(User.size() > 1) Log.d("archer frame", String.valueOf(User.get(1).frame));
+
+		for(int i = 1; i < User.size(); i++){
+
+			if(User.get(i).pattern == Castle.get(2) && User.get(i).state == 1){
+				User.get(i).motion = 0;
+				User.get(i).frame = 0;
+				User.get(i).state = 0;
+			}
+
+			if(User.get(i).pattern == Castle.get(2) && User.get(i).motion == 0 && User.get(i).frame > 5.9f){
+				User.get(i).motion = 1;
+				User.get(i).frame = 0;
+			}
+
+		}
+
+		for(int i = 1; i < Partner.size(); i++){
+
+			if(Partner.get(i).pattern == Castle.get(2) && Partner.get(i).state == 1){
+				Partner.get(i).motion = 0;
+				Partner.get(i).frame = 0;
+				Partner.get(i).state = 0;
+			}
+
+			if(Partner.get(i).pattern == Castle.get(2) && Partner.get(i).motion == 0 && Partner.get(i).frame > 5.9f){
+				Partner.get(i).motion = 1;
+				Partner.get(i).frame = 0;
+			}
+
+		}
 
 		if(User.get(0).state == 1){
 			User.get(0).motion = 1;
@@ -449,14 +479,14 @@ public class GameMain
 			int addx = 0;
 
 			if(Requester == User.get(0)){
-				for(int i = 0; i < User.size(); i ++) if(User.get(i).pattern == Castle.get(2)) addx += 30;
-				archer.x = (User.get(0).x + 30 + addx);
+				for(int i = 0; i < User.size(); i ++) if(User.get(i).pattern == Castle.get(2)) addx += 15;
+				archer.x = (User.get(0).x + 15 + addx);
 				archer.type = 1;
 				User.add(archer);
 			}
 			else{
-				for(int i = 0; i < Partner.size(); i ++) if(Partner.get(i).pattern == Castle.get(2)) addx -= 30;
-				archer.x = (Partner.get(0).x - 30 - addx);
+				for(int i = 0; i < Partner.size(); i ++) if(Partner.get(i).pattern == Castle.get(2)) addx += 15;
+				archer.x = ((Partner.get(0).x - 15) - addx);
 				archer.flip = true;
 				archer.type = 2;
 				Partner.add(archer);
